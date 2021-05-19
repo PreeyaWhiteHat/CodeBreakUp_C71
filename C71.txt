@@ -1,0 +1,130 @@
+Step 1
+
+In bookTransactionscreen.js
+
+<TouchableOpacity
+          style={styles.submitButton}
+          onPress={async()=>{
+            var transactionMessage = await this.handleTransaction();
+          }}>
+          <Text style={styles.submitButtonText}>Submit</Text>
+</TouchableOpacity>
+
+ submitButton:{
+    backgroundColor: '#FBC02D',
+    width: 100,
+    height:50
+  },
+  submitButtonText:{
+    padding: 10,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight:"bold",
+    color: 'white'
+  }
+---------------------------------------------------------
+Step 2
+
+Add SDK in config.js file
+
+import * as firebase from 'firebase'
+require('@firebase/firestore')
+
+var firebaseConfig = {
+    apiKey: "AIzaSyBI_6KhkBRmacZ1wuIDJYA-H53CXyau-P0",
+    authDomain: "willy-app-f2f57.firebaseapp.com",
+    databaseURL: "https://willy-app-f2f57.firebaseio.com",
+    projectId: "willy-app-f2f57",
+    storageBucket: "willy-app-f2f57.appspot.com",
+    messagingSenderId: "957572252876",
+    appId: "1:957572252876:web:c77c38bb82a60591efee69",
+    measurementId: "G-4Y08PYMXK1"
+  };
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+export default firebase.firestore();
+
+
+npm install firebase / npm install firebase@7.9.0
+-------------------------------------------------------
+Step 3
+
+In bookTransactionscreen.js
+
+import firebase from 'firebase';
+import db from '../config';
+
+handleTransaction = async()=>{
+    var transactionMessage = null;
+    db.collection("books").doc(this.state.scannedBookId).get()
+    .then((doc)=>{
+      var book = doc.data()
+      if(book.bookAvailability){
+        this.initiateBookIssue();
+        transactionMessage = "Book Issued"
+      }
+      else{
+        this.initiateBookReturn();
+        transactionMessage = "Book Returned"
+      }
+    })
+
+    this.setState({
+      transactionMessage : transactionMessage
+    })
+  }
+--------------------------------------------------------------
+Step 4
+
+initiateBookIssue = async ()=>{
+    //add a transaction
+    db.collection("transaction").add({
+      'studentId' : this.state.scannedStudentId,
+      'bookId' : this.state.scannedBookId,
+      'data' : firebase.firestore.Timestamp.now().toDate(),
+      'transactionType' : "Issue"
+    })
+
+    //change book status
+    db.collection("books").doc(this.state.scannedBookId).update({
+      'bookAvailability' : false
+    })
+    //change number of issued books for student
+    db.collection("students").doc(this.state.scannedStudentId).update({
+      'numberOfBooksIssued' : firebase.firestore.FieldValue.increment(1)
+    })
+
+    this.setState({
+      scannedStudentId : '',
+      scannedBookId: ''
+    })
+}
+
+initiateBookReturn = async ()=>{
+    //add a transaction
+    db.collection("transactions").add({
+      'studentId' : this.state.scannedStudentId,
+      'bookId' : this.state.scannedBookId,
+      'date'   : firebase.firestore.Timestamp.now().toDate(),
+      'transactionType' : "Return"
+    })
+
+    //change book status
+    db.collection("books").doc(this.state.scannedBookId).update({
+      'bookAvailability' : true
+    })
+
+    //change book status
+    db.collection("students").doc(this.state.scannedStudentId).update({
+      'numberOfBooksIssued' : firebase.firestore.FieldValue.increment(-1)
+    })
+
+    this.setState({
+      scannedStudentId : '',
+      scannedBookId : ''
+    })
+}
+
+----------------------------------------------------------------
